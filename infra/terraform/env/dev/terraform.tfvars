@@ -1,3 +1,4 @@
-project_id = "your-dev-project-id"
+project_id = "dev-small-web-app-gcp"
 region     = "asia-northeast1"
-domain     = "dev.example.com" 
+domain     = "dev.example.com"
+image_tag  = "latest" 

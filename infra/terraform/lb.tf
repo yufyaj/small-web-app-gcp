@@ -14,9 +14,49 @@ resource "google_compute_backend_service" "app_bs" {
   protocol              = "HTTP"
   load_balancing_scheme = "EXTERNAL_MANAGED"
   enable_cdn            = true  # 静的ファイルをエッジキャッシュ
+  
+  # コンテンツキャッシュの設定
+  cdn_policy {
+    cache_mode = "USE_ORIGIN_HEADERS"
+    default_ttl = 3600  # デフォルトのキャッシュ時間（秒）
+    signed_url_cache_max_age_sec = 7200  # 署名付きURLのキャッシュ時間（秒）
+  }
 
   backend {
     group = google_compute_region_network_endpoint_group.app_neg.id
+  }
+  
+  # ヘルスチェックは Serverless NEG では不要
+  security_policy = google_compute_security_policy.cloud_armor.name
+}
+
+# Cloud Armor セキュリティポリシー（DDoS保護）
+resource "google_compute_security_policy" "cloud_armor" {
+  name = "lb-cloud-armor"
+  
+  # 基本的なWAFルール
+  rule {
+    action   = "deny(403)"
+    priority = "1000"
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('xss-stable')"
+      }
+    }
+    description = "XSS攻撃を防御"
+  }
+  
+  # デフォルトルール（全許可）
+  rule {
+    action   = "allow"
+    priority = "2147483647"
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    description = "デフォルトルール"
   }
 }
 
@@ -26,7 +66,7 @@ resource "google_compute_url_map" "urlmap" {
   default_service = google_compute_backend_service.app_bs.id
 }
 
-# マネージド SSL 証明書（Let’s Encrypt 相当を自動発行）
+# マネージド SSL 証明書（Let's Encrypt 相当を自動発行）
 resource "google_compute_managed_ssl_certificate" "cert" {
   name    = "lb-cert"
   managed { domains = [var.domain] }
