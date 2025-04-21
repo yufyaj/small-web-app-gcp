@@ -22,8 +22,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Nginx
-RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+# Nginx and required packages
+RUN apt-get update && apt-get install -y nginx gettext-base && rm -rf /var/lib/apt/lists/*
 COPY --from=nginx /etc/nginx /etc/nginx
 
 # Next.js
