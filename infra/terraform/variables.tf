@@ -19,3 +19,15 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "repository_id" {
+  description = "Artifact Registry のリポジトリID"
+  type        = string
+  default     = "apps-unified"
+}
+
+variable "image_name" {
+  description = "コンテナイメージ名"
+  type        = string
+  default     = "app"
+}
