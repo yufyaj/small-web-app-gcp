@@ -16,6 +16,8 @@ COPY backend .
 # Nginx
 FROM nginx:alpine AS nginx
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+# メインのnginx.confをコピー
+RUN cat /etc/nginx/nginx.conf > /nginx.conf
 
 # Final image
 FROM python:3.11-slim
@@ -23,8 +25,17 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Nginx and required packages
-RUN apt-get update && apt-get install -y nginx gettext-base && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y nginx gettext-base netcat-traditional curl gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g npm@latest && \
+    # nginxユーザーを作成
+    useradd -r nginx && \
+    rm -rf /var/lib/apt/lists/*
+
+# Nginxの設定をコピー
 COPY --from=nginx /etc/nginx /etc/nginx
+COPY --from=nginx /nginx.conf /etc/nginx/nginx.conf
 
 # Next.js
 COPY --from=frontend-builder /app/frontend/.next /app/frontend/.next
