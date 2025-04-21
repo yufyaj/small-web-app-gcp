@@ -23,47 +23,49 @@ on:
           - staging
           - production
 
-env:
-  ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
-  # コミットSHAをデフォルトタグとして使用し、Terraformの設定も参照
-  COMMIT_SHA: ${{ github.sha }}
-
 jobs:
-  build-push-deploy:
+  determine-environments:
     runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.set-environments.outputs.environments }}
+    steps:
+      - id: set-environments
+        run: |
+          if [ "${{ github.event.inputs.environment }}" != "" ]; then
+            # 手動実行時は選択された環境のみ
+            echo "environments=[\"${{ github.event.inputs.environment }}\"]" >> $GITHUB_OUTPUT
+          else
+            # mainブランチへのプッシュ時はdev環境のみ
+            echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
+          fi
+
+  build-push-deploy:
+    needs: determine-environments
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: ${{ fromJson(needs.determine-environments.outputs.environments) }}
+    environment: ${{ matrix.environment == 'dev' && 'development' || matrix.environment }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
 
-      - id: "auth"
-        uses: "google-github-actions/auth@v2"
-        with:
-          credentials_json: "${{ secrets.GCP_SA_KEY }}"
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-
+      # 最初にTerraform変数を抽出して、プロジェクトIDを取得
       - name: Extract Terraform Variables
         id: terraform-vars
         run: |
-          cd infra/terraform/env/${{ env.ENVIRONMENT }}
-          # リージョンを取得
-          REGION=$(grep -oP 'region\s*=\s*"\K[^"]+' terraform.tfvars)
-          echo "REGION=$REGION" >> $GITHUB_ENV
+          cd infra/terraform/env/${{ matrix.environment }}
           # プロジェクトIDを取得
           PROJECT_ID=$(grep -oP 'project_id\s*=\s*"\K[^"]+' terraform.tfvars)
           echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+          
+          # リージョンを取得
+          REGION=$(grep -oP 'region\s*=\s*"\K[^"]+' terraform.tfvars)
+          echo "REGION=$REGION" >> $GITHUB_ENV
+          
           # イメージタグの取得
           TF_IMAGE_TAG=$(grep -oP 'image_tag\s*=\s*"\K[^"]+' terraform.tfvars)
-          # Terraformのタグが "latest" の場合はコミットハッシュを使用
-          if [ "$TF_IMAGE_TAG" = "latest" ]; then
-            echo "IMAGE_TAG=${{ env.COMMIT_SHA }}" >> $GITHUB_ENV
-          else
-            echo "IMAGE_TAG=$TF_IMAGE_TAG" >> $GITHUB_ENV
-          fi
+          echo "IMAGE_TAG=$TF_IMAGE_TAG" >> $GITHUB_ENV
           
           # リポジトリIDを取得
           REPOSITORY=$(grep -oP 'repository_id\s*=\s*"\K[^"]+' terraform.tfvars)
@@ -73,41 +75,44 @@ jobs:
           IMAGE_NAME=$(grep -oP 'image_name\s*=\s*"\K[^"]+' terraform.tfvars)
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
 
+      - id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: ${{ 
+            matrix.environment == 'dev' && secrets.GCP_SA_KEY_DEV || 
+            matrix.environment == 'staging' && secrets.GCP_SA_KEY_STAGING || 
+            matrix.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION 
+          }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ 
+            matrix.environment == 'dev' && secrets.GCP_SA_KEY_DEV || 
+            matrix.environment == 'staging' && secrets.GCP_SA_KEY_STAGING || 
+            matrix.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION 
+          }}
+
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
-      - name: Build unified Docker image
+      - name: Build Docker image
         run: |
-          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
-          # latestタグも設定
-          docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest
+          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            --build-arg ENVIRONMENT=${{ matrix.environment }} .
 
-      - name: Push unified Docker image
+      - name: Push Docker image
         run: |
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest
           
-      - name: Check tfvars file exists
+      - name: Deploy to Cloud Run
         run: |
-          if [ ! -f ./infra/terraform/env/${{ env.ENVIRONMENT }}/terraform.tfvars ]; then
-            echo "Error: terraform.tfvars for environment ${{ env.ENVIRONMENT }} does not exist"
-            exit 1
-          fi
+          gcloud run deploy ${{ env.IMAGE_NAME }}-${{ matrix.environment }} \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars="ENVIRONMENT=${{ matrix.environment }}"
           
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.11.4
-          
-      - name: Terraform Init
-        working-directory: ./infra/terraform
-        run: |
-          terraform init -var-file="env/${{ env.ENVIRONMENT }}/terraform.tfvars"
-        
-      - name: Terraform Apply
-        working-directory: ./infra/terraform
-        run: |
-          terraform apply -auto-approve \
-            -var-file="env/${{ env.ENVIRONMENT }}/terraform.tfvars" \
-            -var="image_tag=${{ env.IMAGE_TAG }}"
