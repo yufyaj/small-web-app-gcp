@@ -12,9 +12,9 @@ resource "google_cloud_run_v2_service" "app" {
     revision        = "app-svc-revision-001"
 
     containers {
-      # Artifact Registry に push 済みのイメージ
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_id}/${var.image_name}:${var.image_tag}"
-      
+      # 初期イメージは空のダミーイメージを使用（実際のデプロイはGitHub Actionsから行う）
+      image = "us-docker.pkg.dev/cloudrun/container/hello"
+            
       resources {
         limits = {
           cpu    = "1000m"
