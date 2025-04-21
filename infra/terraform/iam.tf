@@ -5,6 +5,13 @@ resource "google_service_account" "app_sa" {
   description  = "アプリケーション実行用のサービスアカウント"
 }
 
+# Artifact Registry/Cloud Run 管理用サービスアカウント
+resource "google_service_account" "cicd_sa" {
+  account_id   = "cicd-sa"
+  display_name = "CI/CD 用サービスアカウント"
+  description  = "Artifact RegistryやCloud Runの管理権限を持つCI/CD用サービスアカウント"
+}
+
 # Cloud Run が Cloud SQL に接続できるようにする
 resource "google_project_iam_member" "run_sql_client" {
   project = var.project_id
@@ -17,4 +24,25 @@ resource "google_project_iam_member" "run_ar_reader" {
   project = var.project_id
   role    = "roles/artifactregistry.reader"
   member  = "serviceAccount:${google_service_account.app_sa.email}"
+}
+
+# Artifact Registry 管理権限の付与（CI/CD用）
+resource "google_project_iam_member" "cicd_ar_admin" {
+  project = var.project_id
+  role    = "roles/artifactregistry.admin"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
+}
+
+# Cloud Run 管理権限の付与（CI/CD用）
+resource "google_project_iam_member" "cicd_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
+}
+
+# サービスアカウントトークン作成権限（GitHub Actions等からのデプロイ用）
+resource "google_project_iam_member" "cicd_sa_token_creator" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountTokenCreator"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
 }
