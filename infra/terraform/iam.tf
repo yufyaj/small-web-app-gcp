@@ -46,3 +46,10 @@ resource "google_project_iam_member" "cicd_sa_token_creator" {
   role    = "roles/iam.serviceAccountTokenCreator"
   member  = "serviceAccount:${google_service_account.cicd_sa.email}"
 }
+
+# Artifact Registry Writer権限の付与（CI/CD用: uploadArtifacts専用）
+resource "google_project_iam_member" "cicd_ar_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
+}
