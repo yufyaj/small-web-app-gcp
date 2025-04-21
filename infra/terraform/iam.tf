@@ -53,3 +53,10 @@ resource "google_project_iam_member" "cicd_ar_writer" {
   role    = "roles/artifactregistry.writer"
   member  = "serviceAccount:${google_service_account.cicd_sa.email}"
 }
+
+# CICDサービスアカウントにCompute Engineのサービスアカウントとして振る舞う権限を付与
+resource "google_project_iam_member" "cicd_sa_act_as" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.cicd_sa.email}"
+}
