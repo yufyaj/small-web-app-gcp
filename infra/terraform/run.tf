@@ -13,7 +13,7 @@ resource "google_cloud_run_v2_service" "app" {
 
     containers {
       # Artifact Registry に push 済みのイメージ
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/apps/app:${var.image_tag}"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/apps-unified/app:${var.image_tag}"
       
       resources {
         limits = {
