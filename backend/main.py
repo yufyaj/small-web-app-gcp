@@ -8,7 +8,7 @@ api_router = APIRouter()
 
 @api_router.get("/")
 def read_api_root():
-    return {"message": "Welcome to the API!"}
+    return {"message": "Welcome to the API!!"}
 
 @api_router.get("/items")
 def read_items():
