@@ -75,22 +75,8 @@ jobs:
           IMAGE_NAME=$(grep -oP 'image_name\s*=\s*"\K[^"]+' terraform.tfvars)
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
 
-      - id: "auth"
-        uses: "google-github-actions/auth@v2"
-        with:
-          credentials_json: >-
-            ${{ 
-              matrix.environment == 'dev' && secrets.GCP_SA_KEY_DEV || 
-              matrix.environment == 'staging' && secrets.GCP_SA_KEY_STAGING || 
-              matrix.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION 
-            }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-
       - name: Authenticate with Service Account
+        id: auth
         run: |
           if [ "${{ matrix.environment }}" == "dev" ]; then
             echo '${{ secrets.GCP_SA_KEY_DEV }}' > /tmp/sa-key.json
@@ -100,6 +86,11 @@ jobs:
             echo '${{ secrets.GCP_SA_KEY_PRODUCTION }}' > /tmp/sa-key.json
           fi
           gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.PROJECT_ID }}
 
       - name: Configure Docker for Artifact Registry
         run: |
