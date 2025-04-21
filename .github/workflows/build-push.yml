@@ -81,8 +81,7 @@ jobs:
           credentials_json: ${{ 
             matrix.environment == 'dev' && secrets.GCP_SA_KEY_DEV || 
             matrix.environment == 'staging' && secrets.GCP_SA_KEY_STAGING || 
-            matrix.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION 
-          }}
+            matrix.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION }}
           token_format: "access_token"
 
       - name: Set up Cloud SDK
