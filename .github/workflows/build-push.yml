@@ -87,10 +87,6 @@ jobs:
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ env.PROJECT_ID }}
-          service_account_key: ${{ 
-            matrix.environment == 'dev' && secrets.GCP_SA_KEY_DEV || 
-            matrix.environment == 'staging' && secrets.GCP_SA_KEY_STAGING || 
-            matrix.environment == 'production' && secrets.GCP_SA_KEY_PRODUCTION }}
 
       - name: Configure Docker for Artifact Registry
         run: |
