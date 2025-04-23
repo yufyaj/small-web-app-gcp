@@ -32,18 +32,8 @@ cd small-web-app-gcp
 ### 2. GCP プロジェクトの設定
 
 1. GCP コンソールで新しいプロジェクトを作成します
-2. プロジェクトの課金を有効にします
-3. 必要な API を有効にします:
 
-```bash
-# Linux/Mac
-bash infra/terraform_services_enable.sh
-
-# Windows
-powershell -ExecutionPolicy Bypass -File infra/terraform_services_enable.ps1
-```
-
-### 3. Terraform によるインフラのデプロイとサービスアカウントの設定
+### 3. 初期設定:
 
 1. `infra/terraform/env/<環境名>/terraform.tfvars` を編集して必要な変数を設定:
 
@@ -53,9 +43,20 @@ region         = "asia-northeast1"
 repository_id  = "your-repo-name"
 image_name     = "small-web-app"
 image_tag      = "latest"
+
+### 4.  必要な API を有効にします:
+
+```bash
+# Linux/Mac
+bash infra/terraform_services_enable.sh dev
+
+# Windows
+powershell -ExecutionPolicy Bypass -File infra/terraform_services_enable.ps1 -Env dev
 ```
 
-2. Terraform でインフラをデプロイ（サービスアカウントも自動作成されます）:
+### 5. Terraform によるインフラのデプロイとサービスアカウントの設定
+
+1. Terraform でインフラをデプロイ（サービスアカウントも自動作成されます）:
 
 ```bash
 # Linux/Mac
@@ -65,13 +66,13 @@ bash infra/terraform_build.sh dev
 powershell -ExecutionPolicy Bypass -File infra/terraform_build.ps1 -Environment dev
 ```
 
-3. デプロイ後、GCP コンソールからサービスアカウントのJSONキーを取得:
+2. デプロイ後、GCP コンソールからサービスアカウントのJSONキーを取得:
    - GCP コンソールの「IAM と管理」→「サービスアカウント」に移動
    - Terraform で作成されたサービスアカウントを選択
    - 「鍵」タブから「鍵を作成」→「JSON」を選択
    - ダウンロードされたJSONファイルは安全に保管してください
 
-4. GitHub リポジトリに以下のシークレットを設定:
+3. GitHub リポジトリに以下のシークレットを設定:
    - `GCP_SA_KEY_DEV`: 開発環境用のサービスアカウントキー（JSONファイルの内容）
    - `GCP_SA_KEY_STAGING`: ステージング環境用のサービスアカウントキー（JSONファイルの内容）
    - `GCP_SA_KEY_PRODUCTION`: 本番環境用のサービスアカウントキー（JSONファイルの内容）
