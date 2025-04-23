@@ -43,6 +43,7 @@ region         = "asia-northeast1"
 repository_id  = "your-repo-name"
 image_name     = "small-web-app"
 image_tag      = "latest"
+```
 
 ### 4.  必要な API を有効にします:
 
