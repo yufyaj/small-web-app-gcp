@@ -61,7 +61,7 @@ powershell -ExecutionPolicy Bypass -File infra/terraform_services_enable.ps1 -En
 
 ```bash
 # Linux/Mac
-bash infra/terraform_build.sh dev
+bash infra/terraform_build.sh -e dev
 
 # Windows
 powershell -ExecutionPolicy Bypass -File infra/terraform_build.ps1 -Environment dev
