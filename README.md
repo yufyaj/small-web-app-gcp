@@ -78,7 +78,7 @@ powershell -ExecutionPolicy Bypass -File infra/terraform_build.ps1 -Environment 
    - `GCP_SA_KEY_STAGING`: ステージング環境用のサービスアカウントキー（JSONファイルの内容）
    - `GCP_SA_KEY_PRODUCTION`: 本番環境用のサービスアカウントキー（JSONファイルの内容）
 
-### 4. ローカル開発環境のセットアップ
+### 6. ローカル開発環境のセットアップ
 
 #### バックエンド
 
@@ -98,7 +98,7 @@ npm run dev
 # フロントエンドは http://localhost:3000 で実行されます
 ```
 
-### 5. ローカルでのDockerビルドとテスト
+### 7. ローカルでのDockerビルドとテスト
 
 ```bash
 docker build -t small-web-app:local .
@@ -125,7 +125,3 @@ docker run -p 8080:8080 small-web-app:local
 - **デプロイに失敗する場合**: GCP サービスアカウントの権限を確認してください
 - **コンテナが起動しない場合**: `start.sh` スクリプトのログを確認してください
 - **APIエラー**: バックエンドのログを確認してください
-
-## ライセンス
-
-[ライセンス情報を記載]
